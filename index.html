@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Match Game</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f4f7;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        #game {
+            display: grid;
+            grid-template-columns: repeat(4, 70px);
+            grid-template-rows: repeat(4, 70px);
+            gap: 15px;
+            justify-content: center;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 20px;
+            box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .card {
+            width: 70px;
+            height: 70px;
+            background-color: #4A90E2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: transform 0.5s, background-color 0.3s;
+            perspective: 1000px;
+        }
+
+        .flipped {
+            background-color: #4CAF50;
+            transform: rotateY(180deg);
+        }
+
+        #startButton {
+            padding: 12px 40px;
+            background-color: #FF9800;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 20px;
+            cursor: pointer;
+            margin-top: 30px;
+            box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        #moves, #score, #timer {
+            font-size: 20px;
+            color: #666;
+            margin-top: 10px;
+            background-color: #ffffff; /* White background for better contrast */
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: inline-block; /* Make it an inline block to apply padding */
+        }
+
+        /* Timer and Score Specific Styles */
+        #timer {
+            background-color: #FFEB3B; /* Light yellow for the timer */
+            color: #000; /* Black text for contrast */
+        }
+
+        #score {
+            background-color: #4CAF50; /* Light green for the score */
+            color: white; /* White text for contrast */
+        }
+
+        /* Hover and Flip Effects */
+        .card:hover {
+            transform: scale(1.1);
+            background-color: #1E88E5;
+        }
+
+        /* Button Hover Effect */
+        #startButton:hover {
+            background-color: #F57C00;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Memory Match Game</h1>
+<div id="timer">Time: 60</div>
+<div id="moves">Moves: 0</div>
+<div id="score">Score: 0</div> <!-- Start score at 0 -->
+<div id="game"></div>
+<button id="startButton" onclick="startGame()">Start Game</button>
+
+<!-- Background Music -->
+<audio id="bgMusic" loop>
+    <source src="background-music.mp3" type="audio/mpeg">
+</audio>
+
+<!-- Flip Sound -->
+<audio id="flipSound">
+    <source src="flip-sound.mp3" type="audio/mpeg">
+</audio>
+
+<!-- Win Sound -->
+<audio id="winSound">
+    <source src="win-sound.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+    const cards = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    let flippedCards = [];
+    let moves = 0;
+    let matchedPairs = 0;
+    let score = 0; // Initialize score to 0
+    let timer;
+    let timeLeft = 60; // Set the timer duration in seconds
+    let firstCard, secondCard;
+
+    // Load the background music, flip sound, and win sound
+    const bgMusic = document.getElementById('bgMusic');
+    const flipSound = document.getElementById('flipSound');
+    const winSound = document.getElementById('winSound');
+
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    function startGame() {
+        moves = 0;
+        matchedPairs = 0;
+        score = 0; // Reset score to 0
+        timeLeft = 60; // Reset timer
+        flippedCards = [];
+        document.getElementById('moves').innerText = 'Moves: ' + moves;
+        document.getElementById('score').innerText = 'Score: ' + score; // Display initial score
+        document.getElementById('timer').innerText = 'Time: ' + timeLeft;
+        document.getElementById('startButton').style.display = 'none'; // Hide start button
+
+        // Play background music
+        bgMusic.play();
+
+        // Shuffle and create the game board
+        const shuffledCards = shuffle(cards.slice());
+        const gameBoard = document.getElementById('game');
+        gameBoard.innerHTML = ''; // Clear any existing cards
+
+        shuffledCards.forEach((card, index) => {
+            const cardElement = document.createElement('div');
+            cardElement.classList.add('card');
+            cardElement.dataset.cardValue = card;
+            cardElement.onclick = () => flipCard(cardElement);
+            gameBoard.appendChild(cardElement);
+        });
+
+        startTimer(); // Start the timer
+    }
+
+    function startTimer() {
+        timer = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer').innerText = 'Time: ' + timeLeft;
+
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                endGame(); // End the game when time is up
+            }
+        }, 1000);
+    }
+
+    function flipCard(cardElement) {
+        if (flippedCards.length === 2 || cardElement.classList.contains('flipped')) return;
+
+        // Play flip sound effect
+        flipSound.play();
+
+        cardElement.innerText = cardElement.dataset.cardValue;
+        cardElement.classList.add('flipped');
+        flippedCards.push(cardElement);
+
+        if (flippedCards.length === 2) {
+            checkForMatch();
+        }
+    }
+
+    function checkForMatch() {
+        [firstCard, secondCard] = flippedCards;
+
+        if (firstCard.dataset.cardValue === secondCard.dataset.cardValue) {
+            matchedPairs++;
+            score += 10; // Increase score by 10 for a correct match
+            document.getElementById('score').innerText = 'Score: ' + score;
+            flippedCards = [];
+
+            if (matchedPairs === cards.length / 2) {
+                clearInterval(timer); // Stop the timer
+                // Play winning sound and reset the game automatically
+                bgMusic.pause();
+                winSound.play(); // Play winning sound
+
+                setTimeout(() => {
+                    endGame(); // End the game after win
+                }, 1500); // Add a short delay before ending the game
+            }
+        } else {
+            setTimeout(() => {
+                firstCard.innerText = '';
+                secondCard.innerText = '';
+                firstCard.classList.remove('flipped');
+                secondCard.classList.remove('flipped');
+                flippedCards = [];
+            }, 1000);
+        }
+
+        moves++;
+        document.getElementById('moves').innerText = 'Moves: ' + moves;
+    }
+
+    function endGame() {
+        // Show the score and reset game
+        alert("Game Over! Your final score is: " + score);
+        document.getElementById('startButton').style.display = 'block'; // Show start button again
+        window.location.reload(); // Reload the app
+    }
+</script>
+
+</body>
+</html>
